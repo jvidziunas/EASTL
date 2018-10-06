@@ -65,7 +65,7 @@ public:
 	fixed_tuple_vector(this_type&& x)
 		: base_type(fixed_allocator_type(mBuffer.buffer), mBuffer.buffer, nodeCount, fixed_allocator_type::kNodeSize)
 	{ 
-		base_type::mAllocator.copy_overflow_allocator(x.mAllocator);
+		base_type::internalAllocator().copy_overflow_allocator(x.internalAllocator());
 		base_type::DoInitFromIterator(make_move_iterator(x.begin()), make_move_iterator(x.end()));
 		x.clear();
 	}
@@ -80,7 +80,7 @@ public:
 	fixed_tuple_vector(const this_type& x)
 		: base_type(fixed_allocator_type(mBuffer.buffer), mBuffer.buffer, nodeCount, fixed_allocator_type::kNodeSize)
 	{ 
-		base_type::mAllocator.copy_overflow_allocator(x.mAllocator);
+		base_type::internalAllocator().copy_overflow_allocator(x.internalAllocator());
 		base_type::DoInitFromIterator(x.begin(), x.end());
 	}
 
@@ -130,9 +130,23 @@ public:
 		base_type::DoInitFillTuple(n, tup);
 	}
 
+	fixed_tuple_vector(const typename base_type::value_tuple* first, const typename base_type::value_tuple* last,
+		const overflow_allocator_type& allocator = EASTL_FIXED_TUPLE_VECTOR_DEFAULT_ALLOCATOR)
+		: base_type(fixed_allocator_type(mBuffer.buffer, allocator), mBuffer.buffer, nodeCount, fixed_allocator_type::kNodeSize)
+	{
+		base_type::DoInitFromTupleArray(first, last);
+	}
+
+	fixed_tuple_vector(std::initializer_list<typename base_type::value_tuple> iList,
+		const overflow_allocator_type& allocator = EASTL_FIXED_TUPLE_VECTOR_DEFAULT_ALLOCATOR)
+		: base_type(fixed_allocator_type(mBuffer.buffer, allocator), mBuffer.buffer, nodeCount, fixed_allocator_type::kNodeSize)
+	{
+		base_type::DoInitFromTupleArray(iList.begin(), iList.end());
+	}
+
 	this_type& operator=(const this_type& other)
 	{
-		(base_type&)(*this) = (base_type&)other;
+		base_type::operator=(other);
 		return *this;
 	}
 
@@ -142,6 +156,12 @@ public:
 		// OK to call DoInitFromIterator in a non-ctor scenario because clear() reset everything, more-or-less
 		base_type::DoInitFromIterator(make_move_iterator(other.begin()), make_move_iterator(other.end()));
 		other.clear();
+		return *this;
+	}
+
+	this_type& operator=(std::initializer_list<typename base_type::value_tuple> iList)
+	{
+		base_type::operator=(iList);
 		return *this;
 	}
 
@@ -172,7 +192,7 @@ public:
 	// Returns the value of the bEnableOverflow template parameter.
 	bool can_overflow() const { return bEnableOverflow; }
 
-	const overflow_allocator_type& get_overflow_allocator() const { return base_type::mAllocator.get_overflow_allocator(); }
+	const overflow_allocator_type& get_overflow_allocator() const { return base_type::internalAllocator().get_overflow_allocator(); }
 };
 
 

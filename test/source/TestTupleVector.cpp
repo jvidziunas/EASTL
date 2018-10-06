@@ -8,6 +8,8 @@
 
 #include <EASTL/bonus/tuple_vector.h>
 
+#include <EASTL/sort.h>
+
 using namespace eastl;
 
 int TestTupleVector()
@@ -132,7 +134,6 @@ int TestTupleVector()
 		alignElementVec.push_back();
 		alignElementVec.push_back();
 
-		auto alignDataPtrs = alignElementVec.data();
 		EATEST_VERIFY((uintptr_t)alignElementVec.get<AlignTestVec4>() % 16 == 0);
 		EATEST_VERIFY((uintptr_t)alignElementVec.get<AlignTestFourByte>() % 8 == 0);
 	}
@@ -477,6 +478,80 @@ int TestTupleVector()
 			EATEST_VERIFY(testVec.validate());
 		}
 
+		// test insert with initList
+		{
+			tuple_vector<bool, TestObject, float> testVec;
+			tuple<bool, TestObject, float> testTup;
+			testVec.reserve(10);
+
+			// test insert on empty vector that doesn't cause growth
+			testTup = tuple<bool, TestObject, float>(true, TestObject(3), 3.0f);
+			testVec.insert(testVec.begin(), { 
+				{true, TestObject(3), 3.0f},
+				testTup,
+				{true, TestObject(3), 3.0f}
+				});
+			EATEST_VERIFY(testVec.size() == 3);
+
+			// test insert to end of vector that doesn't cause growth
+			testTup = tuple<bool, TestObject, float>(true, TestObject(5), 5.0f);
+			testVec.insert(testVec.end(), { 
+				{true, TestObject(5), 5.0f}, 
+				testTup, 
+				{true, TestObject(5), 5.0f} 
+				});
+			EATEST_VERIFY(testVec.size() == 6);
+
+			// test insert to middle of vector that doesn't cause growth
+			testTup = tuple<bool, TestObject, float>(true, TestObject(4), 4.0f);
+			testVec.insert(testVec.begin() + 3, {
+				{true, TestObject(4), 4.0f}, 
+				testTup, 
+				{true, TestObject(4), 4.0f}
+				});
+			EATEST_VERIFY(testVec.size() == 9);
+			EATEST_VERIFY(testVec.capacity() == 10);
+
+			// test insert to end of vector that causes growth
+			testTup = tuple<bool, TestObject, float>(true, TestObject(6), 6.0f);
+			testVec.insert(testVec.end(), { 
+				{true, TestObject(6), 6.0f},
+				testTup,
+				{true, TestObject(6), 6.0f}
+				});
+			EATEST_VERIFY(testVec.size() == 12);
+			testVec.shrink_to_fit();
+			EATEST_VERIFY(testVec.capacity() == 12);
+
+			// test insert to beginning of vector that causes growth
+			testTup = tuple<bool, TestObject, float>(true, TestObject(1), 1.0f);
+			testVec.insert(testVec.begin(), { 
+				{true, TestObject(1), 1.0f}, 
+				testTup, 
+				{true, TestObject(1), 1.0f}
+				});
+			EATEST_VERIFY(testVec.size() == 15);
+			testVec.shrink_to_fit();
+			EATEST_VERIFY(testVec.capacity() == 15);
+
+			// test insert to middle of vector that causes growth
+			testTup = tuple<bool, TestObject, float>(true, TestObject(2), 2.0f);
+			testVec.insert(testVec.begin() + 3, { 
+				{true, TestObject(2), 2.0f},
+				testTup,
+				{true, TestObject(2), 2.0f
+				} });
+			EATEST_VERIFY(testVec.size() == 18);
+			testVec.shrink_to_fit();
+			EATEST_VERIFY(testVec.capacity() == 18);
+
+			for (unsigned int i = 0; i < testVec.size(); ++i)
+			{
+				EATEST_VERIFY(testVec.get<1>()[i] == TestObject(i / 3 + 1));
+			}
+			EATEST_VERIFY(testVec.validate());
+		}
+
 		// test insert with rvalue args
 		{
 			tuple_vector<int, MoveOnlyType, TestObject> testVec;
@@ -718,6 +793,47 @@ int TestTupleVector()
 			}
 			EATEST_VERIFY(TestObject::sTOCount == 10 + 20);
 		}
+
+		{
+			tuple_vector<bool, TestObject, float> testVec;
+
+			// test assign from initList that grows the capacity
+			testVec.assign({
+				{ true, TestObject(1), 1.0f }, 
+				{ true, TestObject(1), 1.0f },
+				{ true, TestObject(1), 1.0f }
+				});
+			EATEST_VERIFY(testVec.size() == 3);
+			for (unsigned int i = 0; i < testVec.size(); ++i)
+			{
+				EATEST_VERIFY(testVec[i] == make_tuple(true, TestObject(1), 1.0f));
+			}
+			EATEST_VERIFY(TestObject::sTOCount == 3);
+
+			// test assign from initList that shrinks the vector
+			testVec.assign({
+				{ true, TestObject(2), 2.0f }
+				});
+			EATEST_VERIFY(testVec.size() == 1);
+			for (unsigned int i = 0; i < testVec.size(); ++i)
+			{
+				EATEST_VERIFY(testVec[i] == make_tuple(true, TestObject(2), 2.0f));
+			}
+			EATEST_VERIFY(TestObject::sTOCount == 1);
+
+			// test assign from initList for when there's enough capacity
+			testVec.assign({
+				{ true, TestObject(3), 3.0f },
+				{ true, TestObject(3), 3.0f }
+				});
+			EATEST_VERIFY(testVec.size() == 2);
+			for (unsigned int i = 0; i < testVec.size(); ++i)
+			{
+				EATEST_VERIFY(testVec[i] == make_tuple(true, TestObject(3), 3.0f));
+			}
+			EATEST_VERIFY(TestObject::sTOCount == 2);
+		}
+
 		EATEST_VERIFY(TestObject::IsClear());
 		TestObject::Reset();
 	}
@@ -840,11 +956,20 @@ int TestTupleVector()
 	{
 		MallocAllocator ma;
 		TestObject::Reset();
-		tuple_vector<bool, TestObject, float> srcVec;
-		for (int i = 0; i < 10; ++i)
-		{
-			srcVec.push_back(i % 3 == 0, TestObject(i), (float)i);
-		}
+
+		// test ctor via initlist to prime srcVec
+		tuple_vector<bool, TestObject, float> srcVec({
+			{ true,  TestObject(0), 0.0f},
+			{ false, TestObject(1), 1.0f},
+			{ false, TestObject(2), 2.0f},
+			{ true,  TestObject(3), 3.0f},
+			{ false, TestObject(4), 4.0f},
+			{ false, TestObject(5), 5.0f},
+			{ true,  TestObject(6), 6.0f},
+			{ false, TestObject(7), 7.0f},
+			{ false, TestObject(8), 8.0f},
+			{ true,  TestObject(9), 9.0f}
+			});
 
 		// copy entire tuple_vector in ctor
 		{
@@ -863,6 +988,31 @@ int TestTupleVector()
 		{
 			tuple_vector<bool, TestObject, float> ctorFromAssignment;
 			ctorFromAssignment = srcVec;
+			EATEST_VERIFY(ctorFromAssignment.size() == 10);
+			EATEST_VERIFY(ctorFromAssignment.validate());
+			for (int i = 0; i < 10; ++i)
+			{
+				EATEST_VERIFY(ctorFromAssignment.get<0>()[i] == (i % 3 == 0));
+				EATEST_VERIFY(ctorFromAssignment.get<1>()[i] == TestObject(i));
+				EATEST_VERIFY(ctorFromAssignment.get<2>()[i] == (float)i);
+			}
+		}
+
+		// copy entire tuple_vector via assignment of init-list
+		{
+			tuple_vector<bool, TestObject, float> ctorFromAssignment;
+			ctorFromAssignment = { 
+				{ true,  TestObject(0), 0.0f},
+				{ false, TestObject(1), 1.0f},
+				{ false, TestObject(2), 2.0f},
+				{ true,  TestObject(3), 3.0f},
+				{ false, TestObject(4), 4.0f},
+				{ false, TestObject(5), 5.0f},
+				{ true,  TestObject(6), 6.0f},
+				{ false, TestObject(7), 7.0f},
+				{ false, TestObject(8), 8.0f},
+				{ true,  TestObject(9), 9.0f}
+			};
 			EATEST_VERIFY(ctorFromAssignment.size() == 10);
 			EATEST_VERIFY(ctorFromAssignment.validate());
 			for (int i = 0; i < 10; ++i)
@@ -1341,6 +1491,31 @@ int TestTupleVector()
 		EATEST_VERIFY(lessThanVec <= greaterThanVec);
 		EATEST_VERIFY(equalsVec1 <= equalsVec2);
 		EATEST_VERIFY(equalsVec1 >= equalsVec2);
+	}
+
+	// Test partition
+	{
+		{
+			tuple_vector<bool, TestObject, float, MoveOnlyType> vec;
+			for (int i = 0; i < 10; ++i)
+			{
+				vec.push_back(i % 3 == 0, TestObject(i), (float)i, MoveOnlyType(i));
+			}
+
+			eastl::partition(vec.begin(), vec.end(), [](tuple<bool&, TestObject&, float&, MoveOnlyType&> a)
+			{ return get<0>(a) == true; });
+
+			// partition will split the array into 4 elements where the bool property is true, and 6 where it's false
+			for (int i = 0; i < 4; ++i)
+				EATEST_VERIFY(vec.get<0>()[i] == true);
+			for (int i = 4; i < 10; ++i)
+				EATEST_VERIFY(vec.get<0>()[i] == false);
+
+			EATEST_VERIFY(vec.validate());
+			EATEST_VERIFY(TestObject::sTOCount == 10);
+		}
+		EATEST_VERIFY(TestObject::IsClear());
+		TestObject::Reset();
 	}
 
 	return nErrorCount;
