@@ -22,6 +22,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
     endif()
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_CXX_SIMULATE_ID MATCHES "MSVC") # clang, but not clang-cl.
     # non-Apple clangs uses different versioning.
+    if(NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.0.0"))
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    endif()
     if(NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.5.0"))
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
     endif()
@@ -35,6 +38,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang" AND NOT CMAKE_CXX_SIMULATE_ID MATCH
         message(FATAL_ERROR "Building with a clang version less than 3.0 is not supported.")
     endif()
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    if(NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "7.0.0"))
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17")
+    endif()
     if(NOT (CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.2.0"))
         SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
     endif()
@@ -47,6 +53,8 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.7.3")
         message(FATAL_ERROR "Building with a gcc version less than 4.7.3 is not supported.")
     endif()
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /std:c++latest /W4 /permissive-")
 endif()
 
 

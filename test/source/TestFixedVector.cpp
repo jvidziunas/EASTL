@@ -9,6 +9,10 @@
 #include <EAStdC/EAMemory.h>
 #include <new>
 
+#if defined(EA_COMPILER_CPP17_ENABLED) 
+#include <variant> //Variant not present in older standards
+#endif
+
 
 using namespace eastl;
 
@@ -497,7 +501,6 @@ int TestFixedVector()
 
 	}   // "Crash here."
 
-	#if EASTL_MOVE_SEMANTICS_ENABLED
 	{
 		const int FV_SIZE = 100;
 		fixed_vector<unique_ptr<unsigned int>, FV_SIZE> fvmv1; // to move via move assignment operator
@@ -532,8 +535,14 @@ int TestFixedVector()
 		}
 		EATEST_VERIFY(fv.validate());
 	}
-	#endif
 
+	#if defined(EA_COMPILER_CPP17_ENABLED) 
+	//Test pairing of std::variant with fixed_vector
+	{
+		eastl::fixed_vector<std::variant<int>, 4> v;
+		eastl::fixed_vector<std::variant<int>, 4> b = eastl::move(v);
+	}
+	#endif
 	return nErrorCount;     
 }
 
