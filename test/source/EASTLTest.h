@@ -1269,10 +1269,11 @@ public:
 	const char* get_name() const          { return base_type::get_name(); }
 	void set_name(const char* pName)      { base_type::set_name(pName); }
 
-	static auto getAllocationCount()      { return totalAllocCount; }
-	static auto getTotalAllocationSize()  { return totalAllocatedMemory; }
-	static auto getActiveAllocationSize() { return activeAllocatedMemory; }
-	static auto neverUsed()				  { return totalAllocCount == 0; }
+	static auto getTotalAllocationCount()  { return totalAllocCount; }
+	static auto getTotalAllocationSize()   { return totalAllocatedMemory; }
+	static auto getActiveAllocationSize()  { return activeAllocatedMemory; }
+	static auto getActiveAllocationCount() { return activeAllocCount; }
+	static auto neverUsed()				   { return totalAllocCount == 0; }
 
 	static void resetCount()
 	{
@@ -1565,6 +1566,25 @@ struct MoveOnlyType
 		return *this;
 	}
 	bool operator==(const MoveOnlyType& o) const { return mVal == o.mVal; }
+
+	int mVal;
+};
+
+// MoveOnlyTypeDefaultCtor - useful for verifying containers that may hold, e.g., unique_ptrs to make sure move ops are implemented
+struct MoveOnlyTypeDefaultCtor
+{
+	MoveOnlyTypeDefaultCtor() = default;
+	MoveOnlyTypeDefaultCtor(int val) : mVal(val) {}
+	MoveOnlyTypeDefaultCtor(const MoveOnlyTypeDefaultCtor&) = delete;
+	MoveOnlyTypeDefaultCtor(MoveOnlyTypeDefaultCtor&& x) : mVal(x.mVal) { x.mVal = 0; }
+	MoveOnlyTypeDefaultCtor& operator=(const MoveOnlyTypeDefaultCtor&) = delete;
+	MoveOnlyTypeDefaultCtor& operator=(MoveOnlyTypeDefaultCtor&& x)
+	{
+		mVal = x.mVal;
+		x.mVal = 0;
+		return *this;
+	}
+	bool operator==(const MoveOnlyTypeDefaultCtor& o) const { return mVal == o.mVal; }
 
 	int mVal;
 };

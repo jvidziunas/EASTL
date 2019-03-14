@@ -61,17 +61,6 @@
 	#include <assert.h>
 #endif
 
-// ------------------------------------------------------------------------
-// Ensure this header file is only processed once (with certain compilers)
-// GCC doesn't need such a pragma because it has special recognition for 
-// include guards (such as that above) and effectively implements the same
-// thing without having to resort to non-portable pragmas. It is possible
-// that the decision to use pragma once here is ill-advised, perhaps because
-// some compilers masquerade as MSVC but don't implement all features.
-#if defined(EA_PRAGMA_ONCE_SUPPORTED)
-	#pragma once
-#endif
-
 
 // ------------------------------------------------------------------------
 // By default, GCC defines NULL as ((void*)0), which is the
@@ -708,6 +697,11 @@
 	#define EA_WCHAR_UNIQUE 0
 #endif
 
+// Feature check for native char8_t support. Currently only enabled
+// in Clang since r346892 when -std=c++2a is specified.  
+#if defined(__cpp_char8_t)
+	#define CHAR8_T_DEFINED
+#endif
 
 #ifndef CHAR8_T_DEFINED // If the user hasn't already defined these...
 	#define CHAR8_T_DEFINED

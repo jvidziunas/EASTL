@@ -539,15 +539,12 @@ int TestOptional()
 		}
 		{
 			// user regression
+			EA_DISABLE_VC_WARNING(4625 4626) // copy/assignment operator constructor was implicitly defined as deleted
 			struct local
 			{
 				eastl::unique_ptr<int> ptr;
-
-				local(const local&) = delete;
-				local(local&&) = default;
-				local& operator=(const local&) = delete;
-				local& operator=(local&&) = default;
 			};
+			EA_RESTORE_VC_WARNING()
 
 			eastl::optional<local> o1 = local{eastl::make_unique<int>(42)};
 			eastl::optional<local> o2;

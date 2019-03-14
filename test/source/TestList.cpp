@@ -5,6 +5,7 @@
 #include "EASTLTest.h"
 #include <EASTL/list.h>
 #include <EASTL/sort.h>
+#include <EASTL/fixed_allocator.h>
 
 using namespace eastl;
 
@@ -617,8 +618,10 @@ int TestList()
 		auto insert_pos = a.begin();
 		eastl::advance(insert_pos, 5);
 
-		a.insert(insert_pos, 4, 42);
+		auto result = a.insert(insert_pos, 4, 42);
 		VERIFY(a == ref);
+		VERIFY(*result == 42);
+		VERIFY(*(--result) == 4);
 	}
 
 	// void insert(const_iterator position, InputIterator first, InputIterator last);
@@ -630,8 +633,10 @@ int TestList()
 		auto insert_pos = a.begin();
 		eastl::advance(insert_pos, 5);
 
-		a.insert(insert_pos, to_insert.begin(), to_insert.end());
+		auto result = a.insert(insert_pos, to_insert.begin(), to_insert.end());
 		VERIFY(a == ref);
+		VERIFY(*result == 42);
+		VERIFY(*(--result) == 4);
 	}
 
 	// iterator insert(const_iterator position, std::initializer_list<value_type> ilist);
@@ -713,10 +718,20 @@ int TestList()
 
 	// void reset_lose_memory()    
 	{
-		eastl::list<int> a = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-		a.reset_lose_memory();
-		VERIFY(a.empty());
-		VERIFY(a.size() == 0);
+		typedef eastl::list<int, fixed_allocator> IntList;
+		typedef IntList::node_type                IntListNode;
+		const size_t  kBufferCount = 10;
+		IntListNode   buffer1[kBufferCount];
+		IntList       intList1;
+		const size_t  kAlignOfIntListNode = EA_ALIGN_OF(IntListNode);
+		intList1.get_allocator().init(buffer1, sizeof(buffer1), sizeof(IntListNode), kAlignOfIntListNode);
+
+		intList1 = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+		VERIFY(!intList1.empty());
+		VERIFY(intList1.size() == 10);
+		intList1.reset_lose_memory();
+		VERIFY(intList1.empty());
+		VERIFY(intList1.size() == 0);
 	}
 
 	// void remove(const T& x);
@@ -944,44 +959,6 @@ int TestList()
 		VERIFY(a == ref);
 	}
 
-	#if 0
-	// user reported regression
-	//
-	// Details can be found at: https://github.com/electronicarts/EASTL/issues/199
-	//
-	// The eastl::list has a fallback mechanism to copy node values if the list
-	// allocator instances don't compare equal.  The standard allows this to be
-	// undefined behaviour but we could potential break user code so we have to
-	// deprecate it over time.
-	//
-	// https://en.cppreference.com/w/cpp/container/list/splice
-	//
-	// "No elements are copied or moved, only the internal pointers of the list
-	// nodes are re-pointed. The behavior is undefined if: get_allocator() !=
-	// other.get_allocator()."
-	//
-	{
-		struct C
-		{
-			C() = default;
-			C(const C&) = delete;
-			C(C&&) = delete;
-
-			C& operator=(const C&) = delete;
-			C& operator=(C&&) = delete;
-		};
-
-		eastl::list<C> l0, l1;
-
-		l0.emplace_back();
-		l0.emplace_back();
-
-		l1.emplace_back();
-		l1.emplace_back();
-
-		l0.splice(l0.end(), l1, l1.begin());
-	}
-	#endif
 
 	return nErrorCount;
 }

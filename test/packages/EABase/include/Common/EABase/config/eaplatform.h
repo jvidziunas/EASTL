@@ -340,7 +340,7 @@
 			#define EA_PLATFORM_DESCRIPTION "OSX on ARM64"
 		#elif defined(__POWERPC64__) || defined(__powerpc64__)
 			#define EA_PROCESSOR_POWERPC 1
-			#define CS_UNDEFINED_STRING 1
+			#define EA_PROCESSOR_POWERPC_64 1
 			#define EA_SYSTEM_BIG_ENDIAN 1
 			#define EA_PLATFORM_DESCRIPTION "OSX on PowerPC 64"
 		#elif defined(__POWERPC__) || defined(__powerpc__)
@@ -384,13 +384,16 @@
 		#define EA_ABI_ARM_LINUX 1
 		#define EA_PROCESSOR_ARM32 1
 		#define EA_PLATFORM_DESCRIPTION "Linux on ARM 6/7 32-bits"
+	#elif defined(__aarch64__) || defined(__AARCH64)
+		#define EA_PROCESSOR_ARM64 1
+		#define EA_PLATFORM_DESCRIPTION "Linux on ARM64"
 	#elif defined(__x86_64__)
 		#define EA_PROCESSOR_X86_64 1
 		#define EA_SYSTEM_LITTLE_ENDIAN 1
 		#define EA_PLATFORM_DESCRIPTION "Linux on x64"
 	#elif defined(__powerpc64__)
 		#define EA_PROCESSOR_POWERPC 1
-		#define CS_UNDEFINED_STRING 1
+		#define EA_PROCESSOR_POWERPC_64 1
 		#define EA_SYSTEM_BIG_ENDIAN 1
 		#define EA_PLATFORM_DESCRIPTION "Linux on PowerPC 64"
 	#elif defined(__powerpc__)
@@ -424,7 +427,7 @@
 		#define EA_PLATFORM_DESCRIPTION "BSD on x64"
 	#elif defined(__powerpc64__)
 		#define EA_PROCESSOR_POWERPC 1
-		#define CS_UNDEFINED_STRING 1
+		#define EA_PROCESSOR_POWERPC_64 1
 		#define EA_SYSTEM_BIG_ENDIAN 1
 		#define EA_PLATFORM_DESCRIPTION "BSD on PowerPC 64"
 	#elif defined(__powerpc__)
@@ -633,11 +636,7 @@
 // have 64 bit registers but 32 bit pointers.
 //
 #ifndef EA_PLATFORM_WORD_SIZE
-   #if (EA_PLATFORM_PTR_SIZE == 8)
-	  #define EA_PLATFORM_WORD_SIZE 8
-   #else
-	  #define EA_PLATFORM_WORD_SIZE EA_PLATFORM_PTR_SIZE
-   #endif
+	#define EA_PLATFORM_WORD_SIZE EA_PLATFORM_PTR_SIZE
 #endif
 
 // EA_PLATFORM_MIN_MALLOC_ALIGNMENT

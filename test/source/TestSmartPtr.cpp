@@ -516,6 +516,30 @@ static int Test_unique_ptr()
 		// this_type& operator=(nullptr_t) noexcept
 		pT6 = nullptr;
 		EATEST_VERIFY(pT6.get() == (A*)0);
+
+		// user reported regression
+		// ensure a unique_ptr containing nullptr doesn't call the deleter when its destroyed.
+		{
+			static bool sLocalDeleterCalled;
+			sLocalDeleterCalled = false;
+
+			struct LocalDeleter
+			{
+				void operator()(int* p) const
+				{
+					sLocalDeleterCalled = true;
+					delete p;
+				}
+			};
+
+			using local_unique_ptr = eastl::unique_ptr<int, LocalDeleter>;
+
+			local_unique_ptr pEmpty{nullptr};
+
+			pEmpty = local_unique_ptr{new int(42), LocalDeleter()};
+
+			EATEST_VERIFY(sLocalDeleterCalled == false);
+		}
 	}
 
 	{
@@ -823,6 +847,11 @@ static int Test_scoped_ptr()
 		delete pA;
 	}
 
+	{
+		scoped_ptr<void> ptr(new int);
+		(void)ptr;
+	}
+
 	EATEST_VERIFY(A::mCount == 0);
 
 	return nErrorCount;
@@ -878,6 +907,11 @@ static int Test_scoped_array()
 		scoped_array<A> ptr(new A[6]);
 		A* pArray = ptr.detach();
 		delete[] pArray;
+	}
+
+	{
+		scoped_array<void> ptr(new int[6]);
+		(void)ptr;
 	}
 
 	EATEST_VERIFY(A::mCount == 0);

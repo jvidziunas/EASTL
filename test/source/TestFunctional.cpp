@@ -15,7 +15,7 @@
 
 EA_DISABLE_ALL_VC_WARNINGS()
 #include <functional>
-EA_RESTORE_ALL_VC_WARNINGS();
+EA_RESTORE_ALL_VC_WARNINGS()
 
 namespace
 {
@@ -795,7 +795,6 @@ int TestFunctional()
 				EATEST_VERIFY(fn0() == 1 && fn1() == 1);
 			}
 
-			#if !EASTL_NO_RVALUE_REFERENCES
 			{
 				eastl::function<int()> fn0 = ReturnZero;
 				eastl::function<int()> fn1 = ReturnOne;
@@ -804,7 +803,6 @@ int TestFunctional()
 				fn0 = eastl::move(fn1);
 				EATEST_VERIFY(fn0() == 1 && fn1 == nullptr);
 			}
-			#endif
 
 			{
 				eastl::function<int(int)> f1(nullptr);
@@ -883,7 +881,13 @@ int TestFunctional()
 			EATEST_VERIFY(fn() == 1);
 			EATEST_VERIFY(fn() == 2);
 
+			EA_DISABLE_CLANG_WARNING(-Wunknown-pragmas)
+			EA_DISABLE_CLANG_WARNING(-Wunknown-warning-option)
+			EA_DISABLE_CLANG_WARNING(-Wself-assign-overloaded)
 			fn = fn;
+			EA_RESTORE_CLANG_WARNING()
+			EA_RESTORE_CLANG_WARNING()
+			EA_RESTORE_CLANG_WARNING()
 
 			EATEST_VERIFY(fn() == 3);
 			EATEST_VERIFY(fn() == 4);
@@ -894,6 +898,33 @@ int TestFunctional()
 			EATEST_VERIFY(fn() == 6);
 			EATEST_VERIFY(fn() == 7);
 			EATEST_VERIFY(fn() == 8);
+		}
+
+		// user regression for memory leak when re-assigning an eastl::function which already holds a large closure.
+		{
+				static int sCtorCount = 0;
+				static int sDtorCount = 0;
+
+				{
+					struct local
+					{
+						local() { sCtorCount++; }
+						local(const local&) {  sCtorCount++; }
+						local(local&&)  {  sCtorCount++; }
+						~local() { sDtorCount++; }
+
+						void operator=(const local&) = delete; // suppress msvc warning
+					} l;
+
+					eastl::function<bool()> f;
+
+					f = [l]() { return false; };
+
+					// ensure closure resources are cleaned up when assigning to a non-null eastl::function.
+					f = [l]() { return true; };
+				}
+
+				EATEST_VERIFY(sCtorCount == sDtorCount);
 		}
 	}
 
@@ -1254,6 +1285,29 @@ int TestFunctional()
 			r();
 
 			EATEST_VERIFY(f.called == true);
+		}
+
+		// ref/cref
+		{
+			{
+				int i = 0;
+				eastl::reference_wrapper<int> r1 = eastl::ref(i);
+				r1.get() = 42;
+
+				eastl::reference_wrapper<int> r2 = eastl::ref(r1);
+
+				EATEST_VERIFY(i == 42);
+				EATEST_VERIFY(r2 == 42);
+			}
+
+			{
+				int i = 1337;
+				eastl::reference_wrapper<const int> r1 = eastl::cref(i);
+				EATEST_VERIFY(r1 == 1337);
+
+				eastl::reference_wrapper<const int> r2 = eastl::cref(r1);
+				EATEST_VERIFY(r2 == 1337);
+			}
 		}
 	}
 
